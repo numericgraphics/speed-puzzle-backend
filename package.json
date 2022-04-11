@@ -1,0 +1,20 @@
+{
+  "name": "speed-puzzle-backend",
+  "version": "0.0.1",
+  "description": "speed puzzle backend",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "mongodb": "^4.1.0",
+    "socket.io": "^4.1.2"
+  },
+  "devDependencies": {
+    "mongodb": "^4.1.0"
+  },
+  "author": "",
+  "license": "ISC"
+}
