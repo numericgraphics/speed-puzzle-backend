@@ -16,13 +16,25 @@ class Global {
             this.mongoDB.getDB()
                 .then(result => {
                     this.db = result
-                    console.log('Global Controller - initDB initialisation', this.db)
                     this.users.init(this.db)
                     resolve(null)
                 })
                 .catch(e => {
                     console.log('Global Controller - initDB initialisation failed !!!')
                     reject(e)
+                })
+        })
+    }
+
+    getHigherScore () {
+        return new Promise((resolve, reject) => {
+            this.users.checkUserScore(123)
+                .then((users) => {
+                    console.log('Global Controller - getHigherScore', users)
+                    resolve(users)
+                }).catch(e => {
+                console.log('Global Controller - getHigherScore failed !!!')
+                reject(e)
                 })
         })
     }

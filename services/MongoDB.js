@@ -11,7 +11,6 @@ class MongoDB {
         return new Promise((resolve, reject) => {
             client.connect()
                 .then(() => {
-                    console.log('MongoDB Class - getDB')
                     resolve(client.db("speed-puzzle-db"))
             })
                 .catch(e => {

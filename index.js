@@ -7,8 +7,6 @@ const app = express()
 const server = http.createServer(app)
 const PORT = process.env.API_PORT
 
-console.log('process env', process.env)
-
 const globalController = new Global()
 globalController.initDB()
     .then(() => console.log('SERVER - initDB - DONE'))
@@ -17,6 +15,13 @@ globalController.initDB()
 app.use(express.json())
 app.get('/', async (req, res) => {
     res.send('<h1>Hello world</h1>')
+});
+
+app.get('/getHighersScore', async (req, res) => {
+    globalController.getHigherScore().then(() => {
+        res.send('<h1>this is the higher score</h1>')
+    })
+
 });
 
 
