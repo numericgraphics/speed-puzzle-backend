@@ -13,15 +13,20 @@ globalController.initDB()
     .catch((e) => console.log('SERVER - initDB - ERROR', e))
 
 app.use(express.json())
-app.get('/', async (req, res) => {
+app.get('/', (req, res) => {
     res.send('<h1>Hello world</h1>')
 });
 
-app.get('/getHighersScore', async (req, res) => {
-    globalController.getHigherScore().then(() => {
-        res.send('<h1>this is the higher score</h1>')
+app.post('/score', (req, res) => {
+    const { score } = req.body
+    console.log('globalController - /score', score)
+      globalController.checkScore(score).then(() => {
+        console.log('index - response 200')
+          res.send()
+    }).catch((result) => {
+        console.log('index - response 406')
+          res.status(406).send(result)
     })
-
 });
 
 

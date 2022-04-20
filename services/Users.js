@@ -40,25 +40,6 @@ class Users {
                 })
         })
     }
-
-
-    // TODO : create a Capped Collections with a fixed size to 20
-    // https://www.mongodb.com/docs/manual/core/capped-collections/#behavior
-    checkUserScore (score) {
-        return new Promise((resolve, reject) => {
-            this.collection.findOne({'name' : 'b'})
-                .then((result) => {
-                    console.log('findOne name b', result)
-                })
-            this.collection.find({}).sort({score:-1}).toArray()
-                .then((result) => {
-                    console.log('length', result.length)
-                    console.log('min', Math.min(...this.getCollectionScore(result)))
-                    console.log('max', Math.max(...this.getCollectionScore(result)))
-                })
-
-        })
-    }
 }
 
 module.exports = Users
