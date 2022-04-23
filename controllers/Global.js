@@ -29,14 +29,14 @@ class Global {
         })
     }
 
-    addScore (score = 123) {
+    addUser (score, email, password) {
         return new Promise((resolve, reject) => {
-            this.scores.checkScores(score)
+            this.users.addUser({score, email, password})
                 .then(() => {
-                    console.log('Global Controller - addScore')
+                    console.log('Global Controller - addUser')
                     resolve()
                 }).catch(e => {
-                console.log('Global Controller - addScore failed !!!')
+                console.log('Global Controller - addUser failed !!!')
                 reject()
             })
         })

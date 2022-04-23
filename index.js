@@ -29,6 +29,20 @@ app.post('/score', (req, res) => {
     })
 });
 
+app.post('/adduser', (req, res) => {
+    const { score, email, password } = req.body
+    // console.log('globalController - /adduser score', score)
+    // console.log('globalController - /adduser email', email)
+    // console.log('globalController - /adduser password', password)
+    globalController.addUser(score, email, password).then(() => {
+        console.log('index - response 200')
+        res.send()
+    }).catch((result) => {
+        console.log('index - response 406')
+        res.status(406).send(result)
+    })
+});
+
 
 server.listen(PORT, () => {
     console.log(`Listening on ${ PORT }`)
