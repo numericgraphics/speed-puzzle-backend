@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http')
 require('dotenv').config()
 const Global = require('./Controllers/Global')
+const EVENTS = require("./constants/events");
 
 const app = express()
 const server = http.createServer(app)
@@ -34,8 +35,11 @@ app.post('/adduser', (req, res) => {
     // console.log('globalController - /adduser score', score)
     // console.log('globalController - /adduser email', email)
     // console.log('globalController - /adduser password', password)
-    globalController.addUser(score, email, password).then(() => {
-        console.log('index - response 200')
+    globalController.addUser(score, email, password).then((result) => {
+        console.log('index - adduser result', result)
+        if (result.message === EVENTS.USER_ALREADY_EXIST) {
+            res.status(409).send("User Already Exist.")
+        }
         res.send()
     }).catch((result) => {
         console.log('index - response 406')

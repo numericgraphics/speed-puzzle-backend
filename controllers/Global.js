@@ -1,6 +1,7 @@
 const MongoDB = require("../services/MongoDB")
 const Users = require("../services/Users");
 const Scores = require("../services/Scores");
+const EVENTS = require("../constants/events");
 
 class Global {
     constructor(){
@@ -29,12 +30,16 @@ class Global {
         })
     }
 
-    addUser (score, email, password) {
-        return new Promise((resolve, reject) => {
+     addUser (score, email, password) {
+        return new Promise(async (resolve, reject) => {
+            const oldUser =  await this.users.isUserAlreadyExist(email)
+            if (oldUser) {
+                resolve({message: EVENTS.USER_ALREADY_EXIST})
+            }
+
             this.users.addUser({score, email, password})
-                .then(() => {
-                    console.log('Global Controller - addUser')
-                    resolve()
+                .then((result) => {
+                    resolve({message: EVENTS.USER_CREATED})
                 }).catch(e => {
                 console.log('Global Controller - addUser failed !!!')
                 reject()

@@ -13,12 +13,16 @@ class Users {
         this.collection = collection.collection("users")
     }
 
+    async isUserAlreadyExist (email) {
+       return  await this.collection.findOne({ email });
+    }
+
     addUser (user) {
         return new Promise((resolve, reject) => {
             this.collection.insertOne(user)
-                .then(() => {
-                    console.log('Users - addUser')
-                    resolve(null)
+                .then((result) => {
+                    console.log('Users - addUser', result)
+                    resolve(result)
                 })
                 .catch(e => {
                     console.log('Users - addUser failed !!!')
