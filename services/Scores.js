@@ -1,18 +1,21 @@
+const {getCollectionPropertyValue} = require("../utils/array");
+
 class Scores {
     constructor(){
         console.log('Scores Class Constructor')
         this.collection = null
     }
 
-    getCollectionPropertyValue(arr, property){
-        return arr.map(a => a[property]);
-    }
-
-    init (collection) {
+    init (db) {
         console.log('Scores Class - init')
-        this.collection = collection.collection("Users")
+        this.collection = db.collection("Users")
     }
 
+    async getSmallerScores (score) {
+        const collection = await this.collection.find().toArray()
+        const scores = getCollectionPropertyValue(collection, 'score')
+        return Math.min(...scores)
+    }
 
     // TODO : create a Capped Collections with a fixed size to 20
     // https://www.mongodb.com/docs/manual/core/capped-collections/#behavior

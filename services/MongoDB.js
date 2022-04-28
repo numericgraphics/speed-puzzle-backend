@@ -7,7 +7,7 @@ class MongoDB {
         console.log('MongoDB Class - Constructor')
     }
 
-    getDB() {
+    connect() {
         return new Promise((resolve, reject) => {
             client.connect()
                 .then(() => {

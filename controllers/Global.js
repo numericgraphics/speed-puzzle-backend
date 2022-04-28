@@ -6,6 +6,7 @@ const EVENTS = require("../constants/events");
 class Global {
     constructor(){
         console.log('Global Class Constructor')
+
         this.mongoDB = new MongoDB()
         this.users = new Users()
         this.scores = new Scores()
@@ -16,7 +17,7 @@ class Global {
 
     initDB () {
         return new Promise((resolve, reject) => {
-            this.mongoDB.getDB()
+            this.mongoDB.connect()
                 .then(result => {
                     this.db = result
                     this.users.init(this.db)
@@ -30,15 +31,16 @@ class Global {
         })
     }
 
-     addUser (score, email, password) {
+     addUser (user) {
+        const { email } = user
         return new Promise(async (resolve, reject) => {
             const oldUser =  await this.users.isUserAlreadyExist(email)
             if (oldUser) {
                 resolve({message: EVENTS.USER_ALREADY_EXIST})
             }
 
-            this.users.addUser({score, email, password})
-                .then((result) => {
+            this.users.addUser(user)
+                .then(() => {
                     resolve({message: EVENTS.USER_CREATED})
                 }).catch(e => {
                 console.log('Global Controller - addUser failed !!!')

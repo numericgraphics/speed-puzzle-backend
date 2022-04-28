@@ -19,35 +19,35 @@ app.get('/', (req, res) => {
 });
 
 app.post('/score', (req, res) => {
-    const { score } = req.body
-    console.log('globalController - /score', score)
-      globalController.checkScore(score).then(() => {
-        console.log('index - response 200')
-          res.send()
+    const {score} = req.body
+
+    globalController.checkScore(score).then(() => {
+        res.send()
     }).catch((result) => {
-        console.log('index - response 406')
-          res.status(406).send(result)
+        res.status(406).send(result)
     })
+
 });
 
 app.post('/adduser', (req, res) => {
-    const { score, email, password } = req.body
-    // console.log('globalController - /adduser score', score)
-    // console.log('globalController - /adduser email', email)
-    // console.log('globalController - /adduser password', password)
-    globalController.addUser(score, email, password).then((result) => {
-        console.log('index - adduser result', result)
-        if (result.message === EVENTS.USER_ALREADY_EXIST) {
-            res.status(409).send("User Already Exist.")
-        }
-        res.send()
-    }).catch((result) => {
-        console.log('index - response 406')
-        res.status(406).send(result)
-    })
+    const {username, score, email, password} = req.body
+
+    globalController.addUser({username, score, email, password})
+        .then((result) => {
+            console.log('index - adduser result', result)
+            if (result.message === EVENTS.USER_ALREADY_EXIST) {
+                res.status(409).send("User Already Exist.")
+            }
+            res.send()
+        })
+        .catch((result) => {
+            console.log('index - response 406')
+            res.status(406).send(result)
+        })
+
 });
 
 
 server.listen(PORT, () => {
-    console.log(`Listening on ${ PORT }`)
+    console.log(`Listening on ${PORT}`)
 })

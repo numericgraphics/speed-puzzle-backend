@@ -1,16 +1,16 @@
+const bcrypt = require('bcryptjs')
+var jwt = require('jsonwebtoken')
+const {getCollectionPropertyValue} = require("../utils/array");
+
 class Users {
     constructor(){
         console.log('Users Class Constructor')
         this.collection = null
     }
 
-    getCollectionScore(arr){
-        return arr.map(a => a.score);
-    }
-
-    init (collection) {
+    init (db) {
         console.log('Users Class - init')
-        this.collection = collection.collection("users")
+        this.collection = db.collection("users")
     }
 
     async isUserAlreadyExist (email) {
@@ -18,7 +18,21 @@ class Users {
     }
 
     addUser (user) {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
+
+            const collection = await this.collection.find().toArray()
+
+            // limit the base at 10 items by removing the smaller score
+            if(collection.length >= 9) {
+                console.log('collection > 9')
+                const scores = getCollectionPropertyValue(collection, 'score')
+                await this.deleteUser({score: Math.min(...scores)})
+            }
+
+            // encrypt user password
+            user.password = await bcrypt.hash(user.password, 10)
+
+            // insert the new user with encrypted password
             this.collection.insertOne(user)
                 .then((result) => {
                     console.log('Users - addUser', result)
@@ -43,6 +57,18 @@ class Users {
                     reject(e)
                 })
         })
+    }
+
+    deleteUser (query = { score: 123 }) {
+        return new Promise((resolve, reject) => {
+            this.collection.deleteOne(query).then((result) => {
+                console.log('Users - deleteUser done', result);
+                resolve()
+            }).catch((err) => {
+                reject(err)
+            })
+        })
+
     }
 }
 
