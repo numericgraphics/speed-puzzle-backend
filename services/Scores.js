@@ -1,5 +1,10 @@
 const {getCollectionPropertyValue} = require("../utils/array");
 
+// EXAMPLES MONGODB QUERY
+// - list complete decroissant : const collection = this.collection.find({}).sort({score:-1}).toArray()
+// - list complete : this.collection.find().toArray()
+// - list query : this.collection.findOne({'name' : 'b'})
+
 class Scores {
     constructor(){
         console.log('Scores Class Constructor')
@@ -8,7 +13,7 @@ class Scores {
 
     init (db) {
         console.log('Scores Class - init')
-        this.collection = db.collection("Users")
+        this.collection = db.collection("users")
     }
 
     async getSmallerScores (score) {
@@ -17,51 +22,38 @@ class Scores {
         return Math.min(...scores)
     }
 
-    // TODO : create a Capped Collections with a fixed size to 20
-    // https://www.mongodb.com/docs/manual/core/capped-collections/#behavior
+    async getHigherScores (score) {
+        const collection = await this.collection.find().toArray()
+        const scores = getCollectionPropertyValue(collection, 'score')
+        return Math.max(...scores)
+    }
+
     async checkScores (score) {
         return new Promise(async (resolve, reject) => {
 
-
-            //
-            //
-            // this.collection.findOne({'name' : 'b'})
-            //     .then((result) => {
-            //         console.log('findOne name b', result)
-            //     })
-
-            // const collection = this.collection.find({}).sort({score:-1}).toArray()
             let collection
             let scores
             try {
                 collection = await this.collection.find().toArray()
-                scores = this.getCollectionPropertyValue(collection, 'score')
-
-                console.log('collection')
+                scores = getCollectionPropertyValue(collection, 'score')
+                console.log('User score --> ', score)
+                console.log('-- checkScores - collection User --------------')
                 console.log('length', collection.length)
                 console.log('min', Math.min(...scores))
                 console.log('max', Math.max(...scores))
-
+                console.log('---------------------------')
 
 
                 if(score > Math.min(...scores)) {
                     console.log('score is higher', score)
-                    resolve()
+                    resolve(true)
                 }
-                reject(collection)
+                // TODO : send message with resolve method to explain that the score is to low
+                resolve(false)
             } catch (error) {
                 console.log('checkScores - ERROR', error)
                 reject()
             }
-
-
-            // this.collection.find({}).sort({score:-1}).toArray()
-            //     .then((result) => {
-            //         console.log('length', result.length)
-            //         console.log('min', Math.min(...this.getCollectionScore(result)))
-            //         console.log('max', Math.max(...this.getCollectionScore(result)))
-            //     })
-
         })
     }
 }

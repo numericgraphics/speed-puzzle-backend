@@ -20,11 +20,11 @@ class Users {
     addUser (user) {
         return new Promise(async (resolve, reject) => {
 
-            const collection = await this.collection.find().toArray()
-
             // limit the base at 10 items by removing the smaller score
-            if(collection.length >= 9) {
-                console.log('collection > 9')
+            const collectionCount = await this.collection.count()
+            if(collectionCount >= 10) {
+                console.log('User - addUser - delete user')
+                const collection = await this.collection.find().toArray()
                 const scores = getCollectionPropertyValue(collection, 'score')
                 await this.deleteUser({score: Math.min(...scores)})
             }
@@ -32,14 +32,14 @@ class Users {
             // encrypt user password
             user.password = await bcrypt.hash(user.password, 10)
 
-            // insert the new user with encrypted password
+            // insert the new user with encrypted password and send back final list
             this.collection.insertOne(user)
-                .then((result) => {
-                    console.log('Users - addUser', result)
-                    resolve(result)
+                .then(async () => {
+                    const collection = await this.collection.find().toArray()
+                    resolve(collection)
                 })
                 .catch(e => {
-                    console.log('Users - addUser failed !!!')
+                    console.log('Users - addUser failed !!!', e)
                     reject(e)
                 })
         })
@@ -53,7 +53,7 @@ class Users {
                     resolve(user)
                 })
                 .catch(e => {
-                    console.log('Users - addUser failed !!!')
+                    console.log('Users - getUser failed !!!', e)
                     reject(e)
                 })
         })
@@ -64,8 +64,9 @@ class Users {
             this.collection.deleteOne(query).then((result) => {
                 console.log('Users - deleteUser done', result);
                 resolve()
-            }).catch((err) => {
-                reject(err)
+            }).catch((e) => {
+                console.log('Users - deleteUser failed !!!', e);
+                reject(e)
             })
         })
 

@@ -20,9 +20,12 @@ app.get('/', (req, res) => {
 
 app.post('/score', (req, res) => {
     const {score} = req.body
-
-    globalController.checkScore(score).then(() => {
-        res.send()
+    globalController.checkScore(score).then((result) => {
+        if (result.message === EVENTS.SCORED) {
+            res.status(200).send()
+        } else {
+            res.status(409).send()
+        }
     }).catch((result) => {
         res.status(406).send(result)
     })
@@ -34,11 +37,13 @@ app.post('/adduser', (req, res) => {
 
     globalController.addUser({username, score, email, password})
         .then((result) => {
-            console.log('index - adduser result', result)
             if (result.message === EVENTS.USER_ALREADY_EXIST) {
                 res.status(409).send("User Already Exist.")
+            } else if(result.message === EVENTS.USER_CREATED) {
+                res.status(200).send(JSON.stringify(result.list))
+            } else {
+                res.send()
             }
-            res.send()
         })
         .catch((result) => {
             console.log('index - response 406')

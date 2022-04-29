@@ -32,19 +32,25 @@ class Global {
     }
 
      addUser (user) {
-        const { email } = user
+        const { email, score } = user
         return new Promise(async (resolve, reject) => {
+
+            if(!score) {
+                return reject()
+            }
+
             const oldUser =  await this.users.isUserAlreadyExist(email)
             if (oldUser) {
-                resolve({message: EVENTS.USER_ALREADY_EXIST})
+               return resolve({message: EVENTS.USER_ALREADY_EXIST})
             }
 
             this.users.addUser(user)
-                .then(() => {
-                    resolve({message: EVENTS.USER_CREATED})
-                }).catch(e => {
+                .then((result) => {
+                    return resolve({ message: EVENTS.USER_CREATED, list: result})
+                })
+                .catch(e => {
                 console.log('Global Controller - addUser failed !!!')
-                reject()
+                return reject()
             })
         })
     }
@@ -52,9 +58,12 @@ class Global {
     checkScore (score = 123) {
         return new Promise((resolve, reject) => {
             this.scores.checkScores(score)
-                .then(() => {
-                    console.log('Global Controller - checkScore')
-                    resolve()
+                .then((result) => {
+                    console.log('Global Controller - checkScore', result)
+                    if(result) {
+                        return resolve({ message: EVENTS.SCORED})
+                    }
+                    return resolve({ message: EVENTS.SCORE_REJECTED})
                 }).catch(result => {
                 console.log('Global Controller - checkScore failed !!!')
                 reject(result)
