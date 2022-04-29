@@ -48,7 +48,6 @@ class Scores {
                     console.log('score is higher', score)
                     resolve(true)
                 }
-                // TODO : send message with resolve method to explain that the score is to low
                 resolve(false)
             } catch (error) {
                 console.log('checkScores - ERROR', error)
