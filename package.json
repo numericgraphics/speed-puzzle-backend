@@ -2,21 +2,27 @@
   "name": "speed-puzzle-backend",
   "version": "0.0.1",
   "description": "speed puzzle backend",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "start": "node index.js",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "dotenv": "^16.0.0",
-    "express": "^4.17.1",
-    "jsonwebtoken": "^8.5.1",
-    "mongodb": "^4.1.0",
-    "socket.io": "^4.1.2"
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "mongodb": "^6.18.0",
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
-    "mongodb": "^4.1.0"
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.2.1",
+    "mongodb": "^6.18.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2"
   },
   "author": "",
   "license": "ISC"
