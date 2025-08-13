@@ -7,6 +7,16 @@ export interface Score {
   createdAt?: number;
 }
 
+export interface TopScoreWithUser {
+  value: number;
+  user: {
+    _id: ObjectId;
+    userName: string;
+    createdAt?: number;
+    updatedAt?: number;
+  };
+}
+
 export default class Scores {
   private collection!: Collection<Score>;
 
@@ -48,6 +58,39 @@ export default class Scores {
       .limit(1)
       .next();
     return doc ? doc.value : null;
+  }
+
+  async topWithUsers(limit = 10): Promise<TopScoreWithUser[]> {
+    const pipeline = [
+      { $sort: { value: -1 } },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+      {
+        $project: {
+          _id: 0,
+          value: 1,
+          user: {
+            _id: "$user._id",
+            userName: "$user.userName",
+            createdAt: "$user.createdAt",
+            updatedAt: "$user.updatedAt",
+          },
+        },
+      },
+    ];
+
+    const docs = await this.collection
+      .aggregate<TopScoreWithUser>(pipeline)
+      .toArray();
+    return docs;
   }
 
   async checkScores(score: number): Promise<boolean> {

@@ -1,0 +1,119 @@
+import "dotenv/config";
+import { MongoClient, ObjectId } from "mongodb";
+import bcrypt from "bcryptjs";
+import { faker } from "@faker-js/faker";
+
+// Seed settings
+const DB_NAME = "speed-puzzle-db"; // same as backend
+const URI = process.env.MONGODB_URI ?? "";
+const NUM_USERS = 15;
+const BCRYPT_ROUNDS = 10;
+const PASSWORD_PLAIN = "SeedUser#2025"; // shared demo password
+
+if (!URI) {
+  throw new Error("Missing MONGODB_URI in environment");
+}
+
+// Types aligned with backend services
+interface SeedUser {
+  _id?: ObjectId;
+  userName: string;
+  password: string; // hashed
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface SeedScore {
+  _id?: ObjectId;
+  userId: ObjectId;
+  value: number;
+  createdAt: number;
+}
+
+function randScore(): number {
+  // inclusive 200..500
+  return faker.number.int({ min: 200, max: 500 });
+}
+
+async function ensureIndexes(client: MongoClient) {
+  const db = client.db(DB_NAME);
+  const users = db.collection<SeedUser>("users");
+  const scores = db.collection<SeedScore>("scores");
+
+  await users.createIndex(
+    { userName: 1 },
+    { unique: true, name: "users_userName_unique" }
+  );
+  await scores.createIndex({ userId: 1 }, { name: "scores_userId_idx" });
+  await scores.createIndex({ value: -1 }, { name: "scores_value_desc" });
+}
+
+async function main() {
+  const client = new MongoClient(URI);
+  await client.connect();
+  const db = client.db(DB_NAME);
+  const usersCol = db.collection<SeedUser>("users");
+  const scoresCol = db.collection<SeedScore>("scores");
+
+  // Optional reset (clear both collections)
+  const reset = process.argv.includes("--reset");
+  if (reset) {
+    const delScores = await scoresCol.deleteMany({});
+    const delUsers = await usersCol.deleteMany({});
+    console.log(
+      `Reset mode: removed ${delUsers.deletedCount} users and ${delScores.deletedCount} scores`
+    );
+  }
+
+  // Make sure indexes exist
+  await ensureIndexes(client);
+
+  // Pre-hash shared password
+  const hashed = await bcrypt.hash(PASSWORD_PLAIN, BCRYPT_ROUNDS);
+
+  // Build unique, human-friendly names with Faker (fullName for comprehensive user names)
+  const usedNames = new Set<string>();
+  const userDocs: Omit<SeedUser, "_id">[] = [];
+
+  while (userDocs.length < NUM_USERS) {
+    const fullName = faker.person.fullName();
+    if (usedNames.has(fullName)) continue;
+    usedNames.add(fullName);
+
+    const now = Date.now();
+    userDocs.push({
+      userName: fullName, // aligns with mobile schema field naming
+      password: hashed,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  const userInsert = await usersCol.insertMany(userDocs, { ordered: true });
+  const insertedIds = Object.values(userInsert.insertedIds);
+
+  // For each user, create 1–3 score documents in the 200–500 range
+  const scoreDocs: Omit<SeedScore, "_id">[] = [];
+  insertedIds.forEach((userId) => {
+    const count = faker.number.int({ min: 1, max: 3 });
+    for (let i = 0; i < count; i++) {
+      scoreDocs.push({ userId, value: randScore(), createdAt: Date.now() });
+    }
+  });
+
+  if (scoreDocs.length) {
+    await scoresCol.insertMany(scoreDocs, { ordered: false });
+  }
+
+  console.log(
+    `Seed complete: inserted ${insertedIds.length} users and ${scoreDocs.length} scores.`
+  );
+  console.log(`Default password for all users: ${PASSWORD_PLAIN}`);
+
+  await client.close();
+}
+
+main().catch((err) => {
+  console.error("Seed failed:", err);
+  process.exit(1);
+});

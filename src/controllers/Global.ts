@@ -115,4 +115,39 @@ export default class Global {
     await this.scores.addScore(user._id, value);
     return { userId: user._id, created: true, message: EVENTS.SCORED };
   }
+
+  /**
+   * Public list of users without sensitive fields (no password)
+   */
+  async listUsersPublic(): Promise<
+    Array<Pick<User, "_id" | "userName" | "createdAt" | "updatedAt">>
+  > {
+    const list = await this.users.list();
+    return list.map(({ _id, userName, createdAt, updatedAt }) => ({
+      _id,
+      userName,
+      createdAt,
+      updatedAt,
+    }));
+  }
+
+  /**
+   * Top N scores with their associated user
+   */
+  async getTopScores(
+    limit = 10
+  ): Promise<
+    Array<{
+      score: number;
+      user: {
+        _id: any;
+        userName: string;
+        createdAt?: number;
+        updatedAt?: number;
+      };
+    }>
+  > {
+    const rows = await this.scores.topWithUsers(limit);
+    return rows.map((r) => ({ score: r.value, user: r.user }));
+  }
 }
