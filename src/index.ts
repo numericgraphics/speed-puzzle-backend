@@ -6,6 +6,7 @@ import EVENTS from "./constants/events";
 
 const app = express();
 const server = http.createServer(app);
+
 const PORT = Number(process.env.API_PORT) || 3000;
 
 const globalController = new Global();
@@ -20,10 +21,10 @@ app.get("/", (_req, res) => {
   res.send("<h1>Hello world</h1>");
 });
 
-type ScoreRequestBody = { score: number };
+// --- Score check endpoint (schema-agnostic): checks against global min, does not persist ---
 app.post(
   "/score",
-  async (req: Request<{}, {}, ScoreRequestBody>, res: Response) => {
+  async (req: Request<{}, {}, { score: number }>, res: Response) => {
     try {
       const { score } = req.body;
       const result = await globalController.checkScore(score);
@@ -37,22 +38,23 @@ app.post(
   }
 );
 
-type AddUserRequestBody = {
-  username: string;
-  score: number;
-  email: string;
-  password: string;
-};
+// --- Create user aligned with mobile schema: { userName, password, score? } ---
 app.post(
   "/adduser",
-  async (req: Request<{}, {}, AddUserRequestBody>, res: Response) => {
+  async (
+    req: Request<
+      {},
+      {},
+      { userName: string; password: string; score?: number }
+    >,
+    res: Response
+  ) => {
     try {
-      const { username, score, email, password } = req.body;
+      const { userName, password, score } = req.body;
       const result = await globalController.addUser({
-        username,
-        score,
-        email,
+        userName,
         password,
+        score,
       });
 
       if (result.message === EVENTS.USER_ALREADY_EXIST) {
@@ -64,6 +66,32 @@ app.post(
       return res.send();
     } catch (e) {
       console.log("index - response 406");
+      return res.status(406).send(e);
+    }
+  }
+);
+
+// --- Add a score for a specific user ---
+app.post(
+  "/users/:userName/scores",
+  async (
+    req: Request<{ userName: string }, {}, { value: number }>,
+    res: Response
+  ) => {
+    try {
+      const { userName } = req.params;
+      const { value } = req.body;
+
+      if (typeof value !== "number") {
+        return res.status(400).send("value must be a number");
+      }
+
+      const result = await globalController.addScoreForUser(userName, value);
+      if (result.message === EVENTS.SCORED && result.created) {
+        return res.status(201).json({ userId: result.userId, value });
+      }
+      return res.status(409).send();
+    } catch (e) {
       return res.status(406).send(e);
     }
   }
