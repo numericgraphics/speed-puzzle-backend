@@ -97,6 +97,35 @@ app.post(
   }
 );
 
+// --- Get all users (public) ---
+app.get("/users", async (_req: Request, res: Response) => {
+  try {
+    const list = await globalController.listUsersPublic();
+    return res.status(200).json(list);
+  } catch (e) {
+    return res.status(406).send(e);
+  }
+});
+
+// --- Get top N scores with user (default 10) ---
+app.get(
+  "/scores/top",
+  async (req: Request<{}, {}, {}, { limit?: string }>, res: Response) => {
+    try {
+      const raw = req.query.limit;
+      const parsed = raw ? parseInt(raw, 10) : 10;
+      const limit = Number.isFinite(parsed)
+        ? Math.min(Math.max(parsed, 1), 50)
+        : 10;
+
+      const rows = await globalController.getTopScores(limit);
+      return res.status(200).json(rows);
+    } catch (e) {
+      return res.status(406).send(e);
+    }
+  }
+);
+
 server.listen(PORT, () => {
   console.log(`Listening on ${PORT}`);
 });
