@@ -1,9 +1,14 @@
-import { Collection, Db } from "mongodb";
-import { getCollectionPropertyValue } from "../utils/array";
-import type { User } from "./Users";
+import { Collection, Db, ObjectId } from "mongodb";
+
+export interface Score {
+  _id?: ObjectId;
+  userId: ObjectId;
+  value: number;
+  createdAt?: number;
+}
 
 export default class Scores {
-  private collection!: Collection<User>;
+  private collection!: Collection<Score>;
 
   constructor() {
     // eslint-disable-next-line no-console
@@ -13,47 +18,41 @@ export default class Scores {
   init(db: Db): void {
     // eslint-disable-next-line no-console
     console.log("Scores Class - init");
-    this.collection = db.collection<User>("users");
+    this.collection = db.collection<Score>("scores");
   }
 
-  async getSmallerScores(): Promise<number> {
-    const collection = await this.collection.find().toArray();
-    const scores = getCollectionPropertyValue(collection, "score") as number[];
-    return Math.min(...scores);
+  async addScore(userId: ObjectId, value: number): Promise<Score> {
+    const doc: Omit<Score, "_id"> = { userId, value, createdAt: Date.now() };
+    const res = await this.collection.insertOne(doc);
+    return { ...doc, _id: res.insertedId };
   }
 
-  async getHigherScores(): Promise<number> {
-    const collection = await this.collection.find().toArray();
-    const scores = getCollectionPropertyValue(collection, "score") as number[];
-    return Math.max(...scores);
+  async getMinScore(): Promise<number | null> {
+    const doc = await this.collection.find().sort({ value: 1 }).limit(1).next();
+    return doc ? doc.value : null;
+  }
+
+  async getMaxScore(): Promise<number | null> {
+    const doc = await this.collection
+      .find()
+      .sort({ value: -1 })
+      .limit(1)
+      .next();
+    return doc ? doc.value : null;
+  }
+
+  async topScoreForUser(userId: ObjectId): Promise<number | null> {
+    const doc = await this.collection
+      .find({ userId })
+      .sort({ value: -1 })
+      .limit(1)
+      .next();
+    return doc ? doc.value : null;
   }
 
   async checkScores(score: number): Promise<boolean> {
-    try {
-      const collection = await this.collection.find().toArray();
-      const scores = getCollectionPropertyValue(
-        collection,
-        "score"
-      ) as number[];
-
-      // eslint-disable-next-line no-console
-      console.log("User score --> ", score);
-      // eslint-disable-next-line no-console
-      console.log("-- checkScores - collection User --------------");
-      // eslint-disable-next-line no-console
-      console.log("length", collection.length);
-      // eslint-disable-next-line no-console
-      console.log("min", Math.min(...scores));
-      // eslint-disable-next-line no-console
-      console.log("max", Math.max(...scores));
-      // eslint-disable-next-line no-console
-      console.log("---------------------------");
-
-      return score > Math.min(...scores);
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.log("checkScores - ERROR", error);
-      throw error;
-    }
+    const min = await this.getMinScore();
+    if (min === null) return true; // no scores yet -> accept
+    return score > min;
   }
 }
