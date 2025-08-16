@@ -5,6 +5,5 @@
     "module": "nodenext",
     "rewriteRelativeImportExtensions": true,
     "erasableSyntaxOnly": true
-    // "verbatimModuleSyntax": true
   }
 }

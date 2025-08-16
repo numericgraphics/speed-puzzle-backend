@@ -1,27 +1,49 @@
-// src/index.ts
+// api/index.ts
 import express from "express";
-import http from "http";
 import "dotenv/config";
-import Global from "./controllers/Global.ts";
-import EVENTS from "./constants/events.ts";
+import Global from "../src/controllers/Global.ts";
+import EVENTS from "../src/constants/events.ts";
 
 const app = express();
-const server = http.createServer(app);
-const PORT = Number(process.env.API_PORT) || 3000;
-
-const globalController = new Global();
-globalController
-  .initDB()
-  .then(() => console.log("SERVER - initDB - DONE"))
-  .catch((e) => console.log("SERVER - initDB - ERROR", e));
-
 app.use(express.json());
 
-app.get("/", (_req, res) => {
+// --- Initialize DB on cold start and await before handling requests ---
+const globalController = new Global();
+const ready = (async () => {
+  try {
+    await globalController.initDB();
+    console.log("SERVER - initDB - DONE");
+  } catch (e) {
+    console.error("SERVER - initDB - ERROR", e);
+    throw e;
+  }
+})();
+
+app.use(async (_req, _res, next) => {
+  try {
+    await ready; // wait for cold-start DB init once
+    next();
+  } catch (e) {
+    next(e);
+  }
+});
+
+// --- Debug route (remove once stable) ---
+app.get("/__debug", async (_req, res) => {
+  res.json({
+    hasMongoURI: Boolean(process.env.MONGODB_URI),
+    vercelEnv: process.env.VERCEL_ENV || null,
+    nodeVersion: process.version,
+  });
+});
+
+// --- Health/base route ---
+app.get("/", async (_req, res) => {
   console.log("GET /");
   res.send("<h1>Hello world</h1>");
 });
 
+// --- Routes ---
 app.post(
   "/score",
   async (
@@ -35,7 +57,8 @@ app.post(
         ? res.status(200).send()
         : res.status(409).send();
     } catch (e) {
-      return res.status(406).send(e);
+      console.error("POST /score error:", e);
+      return res.status(500).json({ error: "Internal error" });
     }
   }
 );
@@ -63,7 +86,8 @@ app.post(
         return res.status(200).json(result.list);
       return res.send();
     } catch (e) {
-      return res.status(406).send(e);
+      console.error("POST /adduser error:", e);
+      return res.status(500).json({ error: "Internal error" });
     }
   }
 );
@@ -84,7 +108,8 @@ app.post(
         ? res.status(201).json({ userId: result.userId, value })
         : res.status(409).send();
     } catch (e) {
-      return res.status(406).send(e);
+      console.error("POST /users/:userName/scores error:", e);
+      return res.status(500).json({ error: "Internal error" });
     }
   }
 );
@@ -94,7 +119,8 @@ app.get("/users", async (_req, res) => {
     const list = await globalController.listUsersPublic();
     return res.status(200).json(list);
   } catch (e) {
-    return res.status(406).send(e);
+    console.error("GET /users error:", e);
+    return res.status(500).json({ error: "Internal error" });
   }
 });
 
@@ -106,24 +132,18 @@ app.get(
   ) => {
     try {
       const raw = req.query.limit;
-      const parsed = raw ? parseInt(raw, 10) : 10;
+      const parsed = raw ? parseInt(String(raw), 10) : 10;
       const limit = Number.isFinite(parsed)
         ? Math.min(Math.max(parsed, 1), 50)
         : 10;
       const rows = await globalController.getTopScores(limit);
       return res.status(200).json(rows);
     } catch (e) {
-      return res.status(406).send(e);
+      console.error("GET /scores/top error:", e);
+      return res.status(500).json({ error: "Internal error" });
     }
   }
 );
 
-// ❗ run the HTTP listener only when NOT on Vercel
-// if (!process.env.VERCEL_ENV) {
-console.log(`VERCEL_ENV : ${process.env.VERCEL_ENV}`);
-console.log(`Listening on port ${PORT}`);
-server.listen(PORT, () => console.log(`Listening on ${PORT}`));
-// }
-
-// ✅ expose the Express app for Vercel's /api entry
+// Do NOT call app.listen() on Vercel. Export the app for the Serverless Function.
 export default app;

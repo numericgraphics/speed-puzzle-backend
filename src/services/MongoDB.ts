@@ -11,7 +11,13 @@ export default class MongoDB {
   constructor() {
     // eslint-disable-next-line no-console
     console.log("MongoDB Class - Constructor");
-    this.client = new MongoClient(uri);
+    this.client = new MongoClient(uri, {
+      serverSelectionTimeoutMS: 10000, // fail fast if unreachable
+      connectTimeoutMS: 10000,
+      maxPoolSize: 5,
+      retryWrites: true,
+    });
+    console.log("MongoDB Class - client initialized", this.client);
   }
 
   async connect(): Promise<Db> {

@@ -29,9 +29,12 @@ export default class Global {
   async initDB(): Promise<void> {
     try {
       const db = await this.mongoDB.connect();
+      console.log("Global Controller - initDB initialisation successful");
       this.db = db;
       this.users.init(db);
+      console.log("Global Controller - initDB users initialised");
       this.scores.init(db);
+      console.log("Global Controller - initDB scores initialised");
     } catch (e) {
       // eslint-disable-next-line no-console
       console.log("Global Controller - initDB initialisation failed !!!");
