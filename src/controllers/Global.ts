@@ -1,7 +1,8 @@
-import MongoDB from "../services/MongoDB";
-import Users, { User } from "../services/Users";
-import Scores from "../services/Scores";
-import EVENTS from "../constants/events";
+import MongoDB from "../services/MongoDB.ts";
+import Users from "../services/Users.ts";
+import type { User } from "../services/Users.ts";
+import Scores from "../services/Scores.ts";
+import EVENTS from "../constants/events.ts";
 import type { Db, ObjectId } from "mongodb";
 
 // Results using literal event types
@@ -28,9 +29,12 @@ export default class Global {
   async initDB(): Promise<void> {
     try {
       const db = await this.mongoDB.connect();
+      console.log("Global Controller - initDB initialisation successful");
       this.db = db;
       this.users.init(db);
+      console.log("Global Controller - initDB users initialised");
       this.scores.init(db);
+      console.log("Global Controller - initDB scores initialised");
     } catch (e) {
       // eslint-disable-next-line no-console
       console.log("Global Controller - initDB initialisation failed !!!");
@@ -134,9 +138,7 @@ export default class Global {
   /**
    * Top N scores with their associated user
    */
-  async getTopScores(
-    limit = 10
-  ): Promise<
+  async getTopScores(limit = 10): Promise<
     Array<{
       score: number;
       user: {
