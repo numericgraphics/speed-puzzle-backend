@@ -145,5 +145,4 @@ app.get(
   }
 );
 
-// Do NOT call app.listen() on Vercel. Export the app for the Serverless Function.
 export default app;
