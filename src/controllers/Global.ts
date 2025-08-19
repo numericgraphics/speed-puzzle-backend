@@ -152,4 +152,24 @@ export default class Global {
     const rows = await this.scores.topWithUsers(limit);
     return rows.map((r) => ({ score: r.value, user: r.user }));
   }
+
+  /* Compare a raw score against the current Top 10 threshold.
+   * Returns whether it would be in the Top 10, the threshold score (10th best),
+   * and how many scores currently exist in the Top 10 (could be < 10 on a fresh DB).
+   */
+  async compareScoreToTop10(value: number): Promise<{
+    isTop10: boolean;
+    threshold: number | null;
+    top10Count: number;
+  }> {
+    const top = await this.getTopScores(10);
+    const top10Count = top.length;
+    const threshold =
+      top10Count > 0 ? top[Math.min(top10Count, 10) - 1].score : null;
+
+    // If there are fewer than 10 scores in DB, any score qualifies as Top 10 by definition.
+    const isTop10 = top10Count < 10 ? true : value >= (threshold as number);
+
+    return { isTop10, threshold, top10Count };
+  }
 }

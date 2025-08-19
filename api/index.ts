@@ -144,5 +144,24 @@ app.get(
     }
   }
 );
+app.post(
+  "/scores/compare",
+  async (
+    req: express.Request<{}, {}, { value: number }>,
+    res: express.Response
+  ) => {
+    try {
+      const { value } = req.body;
+      if (typeof value !== "number") {
+        return res.status(400).send("value must be a number");
+      }
+      const result = await globalController.compareScoreToTop10(value);
+      return res.status(200).json(result);
+    } catch (e) {
+      console.error("POST /scores/compare error:", e);
+      return res.status(500).json({ error: "Internal error" });
+    }
+  }
+);
 
 export default app;
