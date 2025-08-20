@@ -93,6 +93,39 @@ export default class Scores {
     return docs;
   }
 
+  async bottomWithUsers(limit = 10): Promise<TopScoreWithUser[]> {
+    const pipeline = [
+      { $sort: { value: 1 } },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+      {
+        $project: {
+          _id: 0,
+          value: 1,
+          user: {
+            _id: "$user._id",
+            userName: "$user.userName",
+            createdAt: "$user.createdAt",
+            updatedAt: "$user.updatedAt",
+          },
+        },
+      },
+    ];
+
+    const docs = await this.collection
+      .aggregate<TopScoreWithUser>(pipeline)
+      .toArray();
+    return docs;
+  }
+
   async checkScores(score: number): Promise<boolean> {
     const min = await this.getMinScore();
     if (min === null) return true; // no scores yet -> accept
