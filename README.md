@@ -47,8 +47,7 @@ MONGODB_URI="mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/?retryWrites=true
 API_PORT=3000 # used only for local non-serverless runs
 ```
 
-> For Vercel → Atlas connectivity, Atlas recommends allowing **`0.0.0.0/0`** (all IPs) because Vercel uses **dynamic egress IPs**. Tighten later with Secure Compute / private networking if required. citeturn0search2turn0search7
-
+> For Vercel → Atlas connectivity, Atlas recommends allowing **`0.0.0.0/0`** (all IPs) because Vercel uses **dynamic egress IPs**. Tighten later with Secure Compute / private networking if required. 
 ---
 
 ## Local development
@@ -91,7 +90,7 @@ vercel --prod    # Production deployment
 - **Build Command**: _empty_
 - **Output Directory**: _empty_
 
-This avoids the “Missing public directory” error that applies to static sites. If you previously set an Output Directory (e.g., `public/`), clear it. citeturn0search1
+This avoids the “Missing public directory” error that applies to static sites. If you previously set an Output Directory (e.g., `public/`), clear it.
 
 ---
 
@@ -286,9 +285,9 @@ curl -X POST https://<your-deployment>.vercel.app/scores/compare-bottom \
 
 ## Serverless notes (important)
 
-- **Express on Vercel**: Files under `/api` become functions; export the Express app and let Vercel handle the server. Don’t call `app.listen()`. citeturn0search0turn0search3
+- **Express on Vercel**: Files under `/api` become functions; export the Express app and let Vercel handle the server. Don’t call `app.listen()`.
 - **Cold start readiness**: We use an async `ready` promise to **await `initDB()`** on first request.
-- **MongoDB Node driver**: `serverSelectionTimeoutMS` defaults to **30000ms**; we set shorter timeouts to fail fast during testing. citeturn0search14turn0search4
+- **MongoDB Node driver**: `serverSelectionTimeoutMS` defaults to **30000ms**; we set shorter timeouts to fail fast during testing.
 - **Connection reuse**: Prefer a **singleton client** cached across invocations to avoid reconnect storms in serverless environments. (See `MongoDB.ts`.)
 
 ---
@@ -297,11 +296,11 @@ curl -X POST https://<your-deployment>.vercel.app/scores/compare-bottom \
 
 ### "Missing public directory" during deploy
 
-Your project is configured like a static site. For an API-only app, clear **Build Command** and **Output Directory** (Project → Settings). citeturn0search1
+Your project is configured like a static site. For an API-only app, clear **Build Command** and **Output Directory** (Project → Settings). 
 
 ### `MongoServerSelectionError` / `ReplicaSetNoPrimary` / timeouts
 
-Usually network access to Atlas. Ensure Atlas Network Access allows your deployment to connect. For Vercel, allow **`0.0.0.0/0`** during testing (use strong creds), or adopt a fixed-egress solution for production. Also verify you use the **SRV** URI (`mongodb+srv://…`). citeturn0search2turn0search7
+Usually network access to Atlas. Ensure Atlas Network Access allows your deployment to connect. For Vercel, allow **`0.0.0.0/0`** during testing (use strong creds), or adopt a fixed-egress solution for production. Also verify you use the **SRV** URI (`mongodb+srv://…`). 
 
 ### Env variables not picked up
 
