@@ -155,7 +155,7 @@ app.post(
       if (typeof value !== "number") {
         return res.status(400).send("value must be a number");
       }
-      const result = await globalController.compareScoreToTop10(value);
+      const result = await globalController.compareScoreToBottom10(value);
       return res.status(200).json(result);
     } catch (e) {
       console.error("POST /scores/compare error:", e);
