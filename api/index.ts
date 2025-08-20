@@ -144,6 +144,21 @@ app.get(
     }
   }
 );
+
+app.get("/scores/bottom", async (req, res) => {
+  try {
+    const limitParam = req.query.limit as string | undefined;
+    const limit = limitParam
+      ? Math.max(1, Math.min(50, parseInt(limitParam, 10)))
+      : 10;
+    const data = await globalController.getBottomScores(limit);
+    return res.status(200).json({ limit, scores: data });
+  } catch (e) {
+    console.error("GET /scores/bottom error:", e);
+    return res.status(500).json({ error: "Internal error" });
+  }
+});
+
 app.post(
   "/scores/compare",
   async (

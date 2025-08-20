@@ -5,7 +5,8 @@
   "main": "src/api/index.ts",
   "type": "module",
   "scripts": {
-    "dev": "vercel dev",
+    "local": "vercel dev",
+    "prod": "vercel --prod",
     "build": "echo \"No build step for Vercel Functions\"",
     "start": "node api/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",

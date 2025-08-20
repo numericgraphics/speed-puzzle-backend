@@ -107,12 +107,20 @@ Health check.
 200 OK → "<h1>Hello world</h1>"
 ```
 
+```bash
+curl -X GET https://<your-deployment>.vercel.app/ | jq
+```
+
 ### GET `/__debug` (temporary)
 
 Returns a few runtime facts to confirm env setup.
 
 ```json
 { "hasMongoURI": true, "vercelEnv": "production", "nodeVersion": "v20.x" }
+```
+
+```bash
+curl -X GET https://<your-deployment>.vercel.app/__debug | jq
 ```
 
 ### POST `/adduser`
@@ -130,6 +138,12 @@ Create a user aligned with the mobile schema (optionally with an initial score).
 - `200 OK` → array of users (public fields only)
 - `409 Conflict` → "User Already Exist."
 
+```bash
+curl -X POST https://<your-deployment>.vercel.app/adduser \
+  -H "Content-Type: application/json" \
+  -d '{"userName": "Ada Lovelace", "password": "SeedUser#2025", "score": 420}' | jq
+```
+
 ### POST `/users/:userName/scores`
 
 Add a score for an existing user.
@@ -146,6 +160,12 @@ Add a score for an existing user.
 - `400 Bad Request` if `value` is not a number
 - `409 Conflict` if rejected by the acceptance rule
 
+```bash
+curl -X POST https://<your-deployment>.vercel.app/users/AdaLovelace/scores \
+  -H "Content-Type: application/json" \
+  -d '{"value": 451}' | jq
+```
+
 ### POST `/score`
 
 Check a raw score against the global minimum across all scores. **Does not persist**.
@@ -160,6 +180,12 @@ Check a raw score against the global minimum across all scores. **Does not persi
 
 - `200 OK` if accepted
 - `409 Conflict` if rejected
+
+```bash
+curl -X POST https://<your-deployment>.vercel.app/score \
+  -H "Content-Type: application/json" \
+  -d '{"score": 300}' | jq
+```
 
 ### GET `/users`
 
@@ -178,6 +204,10 @@ List all users (public fields only).
 ]
 ```
 
+```bash
+curl -X GET https://<your-deployment>.vercel.app/users | jq
+```
+
 ### GET `/scores/top?limit=10`
 
 Top `limit` scores (default 10). Each item returns `{ score, user }`.
@@ -188,6 +218,68 @@ Top `limit` scores (default 10). Each item returns `{ score, user }`.
 [
   { "score": 497, "user": { "_id": "665e...", "userName": "Noah Smith", "createdAt": 172..., "updatedAt": 172... } }
 ]
+```
+
+```bash
+curl -X GET https://<your-deployment>.vercel.app/scores/top?limit=10 | jq
+```
+
+### GET `/scores/bottom?limit=10`
+
+Bottom `limit` scores (default 10). Each item returns `{ score, user }`.
+
+**Response (example)**
+
+```json
+[
+  { "score": 50, "user": { "_id": "665e...", "userName": "Jane Doe", "createdAt": 172..., "updatedAt": 172... } }
+]
+```
+
+```bash
+curl -X GET https://<your-deployment>.vercel.app/scores/bottom?limit=10 | jq
+```
+
+### POST `/scores/compare`
+
+Compare a raw score against the top 10 scores. **Does not persist**.
+
+**Body**
+
+```json
+{ "score": 300 }
+```
+
+**Responses**
+
+- `200 OK` if accepted
+- `409 Conflict` if rejected
+
+```bash
+curl -X POST https://<your-deployment>.vercel.app/scores/compare \
+  -H "Content-Type: application/json" \
+  -d '{"score": 300}' | jq
+```
+
+### POST `/scores/compare-bottom`
+
+Compare a raw score against the bottom 10 scores. **Does not persist**.
+
+**Body**
+
+```json
+{ "score": 300 }
+```
+
+**Responses**
+
+- `200 OK` if accepted
+- `409 Conflict` if rejected
+
+```bash
+curl -X POST https://<your-deployment>.vercel.app/scores/compare-bottom \
+  -H "Content-Type: application/json" \
+  -d '{"score": 300}' | jq
 ```
 
 ---
@@ -231,7 +323,7 @@ We now return **500** for server errors. If you still see 406, ensure your route
 }
 ```
 
-> Vercel builds TypeScript in `/api` automatically; a real `build` step isn’t required for this API-only project. citeturn0search3
+> Vercel builds TypeScript in `/api` automatically; a real `build` step isn’t required for this API-only project.
 
 ---
 

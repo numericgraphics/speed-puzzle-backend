@@ -174,6 +174,24 @@ export default class Global {
   }
 
   /**
+   * Bottom N (smallest) scores with their associated user
+   */
+  async getBottomScores(limit = 10): Promise<
+    Array<{
+      score: number;
+      user: {
+        _id: any;
+        userName: string;
+        createdAt?: number;
+        updatedAt?: number;
+      };
+    }>
+  > {
+    const rows = await this.scores.bottomWithUsers(limit);
+    return rows.map((r) => ({ score: r.value, user: r.user }));
+  }
+
+  /**
    * Compare a raw score against the 10 smallest scores in the DB.
    * Returns whether it would be among the 10 lowest, the highest value among the bottom 10 (i.e., the *threshold*),
    * and how many scores are in that bottom list (can be <10 on a fresh DB).
@@ -183,23 +201,11 @@ export default class Global {
     threshold: number | null;
     bottom10Count: number;
   }> {
-    // If MongoDB version supports $minN (>= 5.2), use aggregation
-    const pipeline = [
-      {
-        $group: {
-          _id: null,
-          bottom: { $minN: { input: "$value", n: 10 } },
-        },
-      },
-    ];
-    const result = await this.scores["collection"]
-      .aggregate<{ bottom: number[] }>(pipeline)
-      .toArray();
-
-    const bottom = (result[0]?.bottom ?? []).sort((a, b) => a - b);
+    const bottom = await this.getBottomScores(10);
     console.log("Bottom 10 scores:", bottom);
     const bottom10Count = bottom.length;
-    const threshold = bottom10Count > 0 ? bottom[bottom10Count - 1] : null;
+    const threshold =
+      bottom10Count > 0 ? bottom[Math.min(bottom10Count, 10) - 1].score : null;
 
     // If fewer than 10 scores exist, any score is considered among the 10 lowest
     const isBottom10 =
