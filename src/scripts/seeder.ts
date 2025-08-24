@@ -8,7 +8,7 @@ const DB_NAME = "speed-puzzle-db"; // same as backend
 const URI = process.env.MONGODB_URI ?? "";
 const NUM_USERS = 15;
 const BCRYPT_ROUNDS = 10;
-const PASSWORD_PLAIN = "SeedUser#2025"; // shared demo password
+const PASSWORD_PLAIN = "Seed2025"; // shared demo password (8 chars, no spaces)
 
 if (!URI) {
   throw new Error("Missing MONGODB_URI in environment");
@@ -28,6 +28,13 @@ interface SeedScore {
   userId: ObjectId;
   value: number;
   createdAt: number;
+}
+
+function generateUsername(): string {
+  // produce 4-9 chars, no spaces, alphanumeric
+  const len = faker.number.int({ min: 4, max: 9 });
+  const raw = faker.string.alphanumeric({ length: len }).toLowerCase();
+  return raw;
 }
 
 function randScore(): number {
@@ -57,7 +64,9 @@ async function main() {
 
   // Optional reset (clear both collections)
   const reset = process.argv.includes("--reset");
+
   if (reset) {
+    console.log("Resetting database...");
     const delScores = await scoresCol.deleteMany({});
     const delUsers = await usersCol.deleteMany({});
     console.log(
@@ -71,18 +80,18 @@ async function main() {
   // Pre-hash shared password
   const hashed = await bcrypt.hash(PASSWORD_PLAIN, BCRYPT_ROUNDS);
 
-  // Build unique, human-friendly names with Faker (fullName for comprehensive user names)
+  // Build unique, rule-compliant usernames
   const usedNames = new Set<string>();
   const userDocs: Omit<SeedUser, "_id">[] = [];
 
   while (userDocs.length < NUM_USERS) {
-    const fullName = faker.person.fullName();
-    if (usedNames.has(fullName)) continue;
-    usedNames.add(fullName);
+    const uname = generateUsername();
+    if (usedNames.has(uname)) continue;
+    usedNames.add(uname);
 
     const now = Date.now();
     userDocs.push({
-      userName: fullName, // aligns with mobile schema field naming
+      userName: uname, // 4-9 chars, no spaces
       password: hashed,
       createdAt: now,
       updatedAt: now,
