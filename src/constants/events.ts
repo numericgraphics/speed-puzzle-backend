@@ -2,6 +2,7 @@
 export const EVENTS = {
   USER_ALREADY_EXIST: "userAlreadyExist",
   USER_CREATED: "userCreated",
+  USER_RECOGNIZED: "userRecognized",
   REMOVE_USER: "removeUser",
   SCORE_REJECTED: "scoreRejected",
   SCORED: "scored",

@@ -19,6 +19,7 @@ interface SeedUser {
   _id?: ObjectId;
   userName: string;
   password: string; // hashed
+  email?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -50,6 +51,10 @@ async function ensureIndexes(client: MongoClient) {
   await users.createIndex(
     { userName: 1 },
     { unique: true, name: "users_userName_unique" }
+  );
+  await users.createIndex(
+    { email: 1 },
+    { sparse: true, name: "users_email_lookup" }
   );
   await scores.createIndex({ userId: 1 }, { name: "scores_userId_idx" });
   await scores.createIndex({ value: -1 }, { name: "scores_value_desc" });
@@ -84,6 +89,8 @@ async function main() {
   const usedNames = new Set<string>();
   const userDocs: Omit<SeedUser, "_id">[] = [];
 
+  const NUM_WITH_EMAIL = 3; // a few seeded users get a recovery email, for local testing
+
   while (userDocs.length < NUM_USERS) {
     const uname = generateUsername();
     if (usedNames.has(uname)) continue;
@@ -93,6 +100,9 @@ async function main() {
     userDocs.push({
       userName: uname, // 4-9 chars, no spaces
       password: hashed,
+      ...(userDocs.length < NUM_WITH_EMAIL
+        ? { email: `${uname}@example.com` }
+        : {}),
       createdAt: now,
       updatedAt: now,
     });
