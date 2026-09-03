@@ -8,7 +8,8 @@ import type { Db, ObjectId } from "mongodb";
 // Results using literal event types
 type AddUserResult =
   | { message: typeof EVENTS.USER_ALREADY_EXIST }
-  | { message: typeof EVENTS.USER_CREATED; list: User[] };
+  | { message: typeof EVENTS.USER_CREATED; list: User[] }
+  | { message: typeof EVENTS.USER_RECOGNIZED; user: User };
 
 type CheckScoreResult =
   | { message: typeof EVENTS.SCORED }
@@ -43,18 +44,34 @@ export default class Global {
   }
 
   /**
-   * Create a user aligned with the mobile schema: { userName, password }
+   * Create a user aligned with the mobile schema: { userName }.
+   * No real authentication — identity is device-local, like an arcade
+   * high-score entry. `password` is accepted for backward compatibility
+   * but is otherwise unused. `email` is an optional recognition/recovery
+   * key: if it already belongs to an existing user, that user is
+   * recognized instead of creating a duplicate.
    * Optionally seed an initial score in the scores collection.
    */
   async addUser(payload: {
     userName: string;
-    password: string;
+    password?: string;
+    email?: string;
     score?: number;
   }): Promise<AddUserResult> {
-    const { userName, password, score } = payload;
+    const { userName, password, email, score } = payload;
 
-    if (!userName || !password) {
-      throw new Error("Invalid payload: userName and password are required");
+    if (!userName) {
+      throw new Error("Invalid payload: userName is required");
+    }
+
+    if (email) {
+      const recognized = await this.users.findByEmail(email);
+      if (recognized) {
+        if (typeof score === "number" && !Number.isNaN(score)) {
+          await this.scores.addScore(recognized._id as ObjectId, score);
+        }
+        return { message: EVENTS.USER_RECOGNIZED, user: recognized };
+      }
     }
 
     const exists = await this.users.findByUserName(userName);
@@ -63,7 +80,7 @@ export default class Global {
     }
 
     try {
-      const created = await this.users.addUser({ userName, password });
+      const created = await this.users.addUser({ userName, password, email });
 
       // create an initial score if provided
       if (typeof score === "number" && !Number.isNaN(score)) {
@@ -77,6 +94,19 @@ export default class Global {
       console.log("Global Controller - addUser failed !!!");
       throw new Error("Add user failed");
     }
+  }
+
+  /**
+   * Look up an existing user by their recovery email, for the "recover my
+   * player on a new device" flow. Returns the public shape (no password).
+   */
+  async findUserByEmail(
+    email: string
+  ): Promise<Pick<User, "_id" | "userName" | "createdAt" | "updatedAt"> | null> {
+    const user = await this.users.findByEmail(email);
+    if (!user) return null;
+    const { _id, userName, createdAt, updatedAt } = user;
+    return { _id, userName, createdAt, updatedAt };
   }
 
   /**
