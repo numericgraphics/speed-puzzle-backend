@@ -8,8 +8,18 @@ import type { Db, ObjectId } from "mongodb";
 // Results using literal event types
 type AddUserResult =
   | { message: typeof EVENTS.USER_ALREADY_EXIST }
-  | { message: typeof EVENTS.USER_CREATED; list: User[] }
-  | { message: typeof EVENTS.USER_RECOGNIZED; user: User };
+  | {
+      message: typeof EVENTS.USER_CREATED;
+      user: Pick<User, "_id" | "userName" | "createdAt" | "updatedAt">;
+      key: string;
+    };
+
+type LoginResult =
+  | {
+      message: typeof EVENTS.LOGIN_SUCCESS;
+      user: Pick<User, "_id" | "userName" | "createdAt" | "updatedAt">;
+    }
+  | { message: typeof EVENTS.LOGIN_FAILED };
 
 type CheckScoreResult =
   | { message: typeof EVENTS.SCORED }
@@ -45,33 +55,20 @@ export default class Global {
 
   /**
    * Create a user aligned with the mobile schema: { userName }.
-   * No real authentication — identity is device-local, like an arcade
-   * high-score entry. `password` is accepted for backward compatibility
-   * but is otherwise unused. `email` is an optional recognition/recovery
-   * key: if it already belongs to an existing user, that user is
-   * recognized instead of creating a duplicate.
+   * No real authentication — identity is a generated recovery key, like an
+   * arcade high-score entry with a claim ticket. The plaintext key is
+   * returned once here and never stored (only its hash is persisted) —
+   * there is no other way to recover it later.
    * Optionally seed an initial score in the scores collection.
    */
   async addUser(payload: {
     userName: string;
-    password?: string;
-    email?: string;
     score?: number;
   }): Promise<AddUserResult> {
-    const { userName, password, email, score } = payload;
+    const { userName, score } = payload;
 
     if (!userName) {
       throw new Error("Invalid payload: userName is required");
-    }
-
-    if (email) {
-      const recognized = await this.users.findByEmail(email);
-      if (recognized) {
-        if (typeof score === "number" && !Number.isNaN(score)) {
-          await this.scores.addScore(recognized._id as ObjectId, score);
-        }
-        return { message: EVENTS.USER_RECOGNIZED, user: recognized };
-      }
     }
 
     const exists = await this.users.findByUserName(userName);
@@ -80,15 +77,19 @@ export default class Global {
     }
 
     try {
-      const created = await this.users.addUser({ userName, password, email });
+      const { user: created, key } = await this.users.addUser(userName);
 
       // create an initial score if provided
       if (typeof score === "number" && !Number.isNaN(score)) {
         await this.scores.addScore(created._id as ObjectId, score);
       }
 
-      const list = await this.users.list();
-      return { message: EVENTS.USER_CREATED, list };
+      const { _id, createdAt, updatedAt } = created;
+      return {
+        message: EVENTS.USER_CREATED,
+        user: { _id, userName, createdAt, updatedAt },
+        key,
+      };
     } catch (e) {
       // eslint-disable-next-line no-console
       console.log("Global Controller - addUser failed !!!");
@@ -97,16 +98,17 @@ export default class Global {
   }
 
   /**
-   * Look up an existing user by their recovery email, for the "recover my
-   * player on a new device" flow. Returns the public shape (no password).
+   * Verify a username + recovery key pair, for the "log in on this device"
+   * flow. Returns the public shape (no keyHash) on success.
    */
-  async findUserByEmail(
-    email: string
-  ): Promise<Pick<User, "_id" | "userName" | "createdAt" | "updatedAt"> | null> {
-    const user = await this.users.findByEmail(email);
-    if (!user) return null;
-    const { _id, userName, createdAt, updatedAt } = user;
-    return { _id, userName, createdAt, updatedAt };
+  async login(userName: string, key: string): Promise<LoginResult> {
+    const user = await this.users.verifyKey(userName, key);
+    if (!user) return { message: EVENTS.LOGIN_FAILED };
+    const { _id, createdAt, updatedAt } = user;
+    return {
+      message: EVENTS.LOGIN_SUCCESS,
+      user: { _id, userName: user.userName, createdAt, updatedAt },
+    };
   }
 
   /**

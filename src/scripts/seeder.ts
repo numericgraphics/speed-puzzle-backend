@@ -2,13 +2,13 @@ import "dotenv/config";
 import { MongoClient, ObjectId } from "mongodb";
 import bcrypt from "bcryptjs";
 import { faker } from "@faker-js/faker";
+import { generateRecoveryKey } from "../services/Users.ts";
 
 // Seed settings
 const DB_NAME = "speed-puzzle-db"; // same as backend
 const URI = process.env.MONGODB_URI ?? "";
-const NUM_USERS = 15;
+const NUM_USERS = 10;
 const BCRYPT_ROUNDS = 10;
-const PASSWORD_PLAIN = "Seed2025"; // shared demo password (8 chars, no spaces)
 
 if (!URI) {
   throw new Error("Missing MONGODB_URI in environment");
@@ -18,8 +18,7 @@ if (!URI) {
 interface SeedUser {
   _id?: ObjectId;
   userName: string;
-  password: string; // hashed
-  email?: string;
+  keyHash: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -34,13 +33,13 @@ interface SeedScore {
 function generateUsername(): string {
   // produce 4-9 chars, no spaces, alphanumeric
   const len = faker.number.int({ min: 4, max: 9 });
-  const raw = faker.string.alphanumeric({ length: len }).toLowerCase();
-  return raw;
+  return faker.string.alphanumeric({ length: len }).toLowerCase();
 }
 
+// Easy to beat: low scores so a first-time player's real game score
+// (typically several hundred+) lands in the top 10 without trying hard.
 function randScore(): number {
-  // inclusive 200..500
-  return faker.number.int({ min: 200, max: 500 });
+  return faker.number.int({ min: 10, max: 80 });
 }
 
 async function ensureIndexes(client: MongoClient) {
@@ -51,10 +50,6 @@ async function ensureIndexes(client: MongoClient) {
   await users.createIndex(
     { userName: 1 },
     { unique: true, name: "users_userName_unique" }
-  );
-  await users.createIndex(
-    { email: 1 },
-    { sparse: true, name: "users_email_lookup" }
   );
   await scores.createIndex({ userId: 1 }, { name: "scores_userId_idx" });
   await scores.createIndex({ value: -1 }, { name: "scores_value_desc" });
@@ -67,42 +62,39 @@ async function main() {
   const usersCol = db.collection<SeedUser>("users");
   const scoresCol = db.collection<SeedScore>("scores");
 
-  // Optional reset (clear both collections)
-  const reset = process.argv.includes("--reset");
+  // Cleanup: always start from an empty slate — this seeder is meant to
+  // fully replace whatever demo/stale data (old email/password schema
+  // included) is sitting in the DB, not layer on top of it.
+  console.log("Cleaning up existing users and scores...");
+  const delScores = await scoresCol.deleteMany({});
+  const delUsers = await usersCol.deleteMany({});
+  console.log(
+    `Removed ${delUsers.deletedCount} users and ${delScores.deletedCount} scores`
+  );
 
-  if (reset) {
-    console.log("Resetting database...");
-    const delScores = await scoresCol.deleteMany({});
-    const delUsers = await usersCol.deleteMany({});
-    console.log(
-      `Reset mode: removed ${delUsers.deletedCount} users and ${delScores.deletedCount} scores`
-    );
-  }
-
-  // Make sure indexes exist
+  // Drop legacy indexes from the old schema (email lookup, non-unique
+  // userName) if present, then recreate the current ones.
+  await usersCol.dropIndex("users_email_lookup").catch(() => {});
   await ensureIndexes(client);
 
-  // Pre-hash shared password
-  const hashed = await bcrypt.hash(PASSWORD_PLAIN, BCRYPT_ROUNDS);
-
-  // Build unique, rule-compliant usernames
+  // Build unique, rule-compliant usernames, each with its own generated key.
   const usedNames = new Set<string>();
   const userDocs: Omit<SeedUser, "_id">[] = [];
-
-  const NUM_WITH_EMAIL = 3; // a few seeded users get a recovery email, for local testing
+  const printableKeys: { userName: string; key: string }[] = [];
 
   while (userDocs.length < NUM_USERS) {
     const uname = generateUsername();
     if (usedNames.has(uname)) continue;
     usedNames.add(uname);
 
+    const key = generateRecoveryKey();
+    const keyHash = await bcrypt.hash(key, BCRYPT_ROUNDS);
+    printableKeys.push({ userName: uname, key });
+
     const now = Date.now();
     userDocs.push({
-      userName: uname, // 4-9 chars, no spaces
-      password: hashed,
-      ...(userDocs.length < NUM_WITH_EMAIL
-        ? { email: `${uname}@example.com` }
-        : {}),
+      userName: uname,
+      keyHash,
       createdAt: now,
       updatedAt: now,
     });
@@ -111,14 +103,12 @@ async function main() {
   const userInsert = await usersCol.insertMany(userDocs, { ordered: true });
   const insertedIds = Object.values(userInsert.insertedIds);
 
-  // For each user, create 1–3 score documents in the 200–500 range
-  const scoreDocs: Omit<SeedScore, "_id">[] = [];
-  insertedIds.forEach((userId) => {
-    const count = faker.number.int({ min: 1, max: 3 });
-    for (let i = 0; i < count; i++) {
-      scoreDocs.push({ userId, value: randScore(), createdAt: Date.now() });
-    }
-  });
+  // One easy-to-beat score per user.
+  const scoreDocs: Omit<SeedScore, "_id">[] = insertedIds.map((userId) => ({
+    userId,
+    value: randScore(),
+    createdAt: Date.now(),
+  }));
 
   if (scoreDocs.length) {
     await scoresCol.insertMany(scoreDocs, { ordered: false });
@@ -127,7 +117,10 @@ async function main() {
   console.log(
     `Seed complete: inserted ${insertedIds.length} users and ${scoreDocs.length} scores.`
   );
-  console.log(`Default password for all users: ${PASSWORD_PLAIN}`);
+  console.log("Seeded recovery keys (dev/testing only):");
+  printableKeys.forEach(({ userName, key }) =>
+    console.log(`  ${userName} -> ${key}`)
+  );
 
   await client.close();
 }
