@@ -66,30 +66,42 @@ app.post(
 app.post(
   "/adduser",
   async (
-    req: express.Request<
-      {},
-      {},
-      { userName: string; password?: string; email?: string; score?: number }
-    >,
+    req: express.Request<{}, {}, { userName: string; score?: number }>,
     res: express.Response
   ) => {
     try {
-      const { userName, password, email, score } = req.body;
-      const result = await globalController.addUser({
-        userName,
-        password,
-        email,
-        score,
-      });
+      const { userName, score } = req.body;
+      const result = await globalController.addUser({ userName, score });
       if (result.message === EVENTS.USER_ALREADY_EXIST)
         return res.status(409).send("User Already Exist.");
       if (result.message === EVENTS.USER_CREATED)
-        return res.status(200).json(result.list);
-      if (result.message === EVENTS.USER_RECOGNIZED)
-        return res.status(200).json({ recognized: true, user: result.user });
+        return res.status(200).json({ user: result.user, key: result.key });
       return res.send();
     } catch (e) {
       console.error("POST /adduser error:", e);
+      return res.status(500).json({ error: "Internal error" });
+    }
+  }
+);
+
+app.post(
+  "/login",
+  async (
+    req: express.Request<{}, {}, { userName: string; key: string }>,
+    res: express.Response
+  ) => {
+    try {
+      const { userName, key } = req.body;
+      if (!userName || !key) {
+        return res.status(400).json({ error: "userName and key are required" });
+      }
+      const result = await globalController.login(userName, key);
+      if (result.message === EVENTS.LOGIN_FAILED) {
+        return res.status(401).json({ error: "Invalid username or key" });
+      }
+      return res.status(200).json({ user: result.user });
+    } catch (e) {
+      console.error("POST /login error:", e);
       return res.status(500).json({ error: "Internal error" });
     }
   }
@@ -126,29 +138,6 @@ app.get("/users", async (_req, res) => {
     return res.status(500).json({ error: "Internal error" });
   }
 });
-
-app.get(
-  "/users/lookup",
-  async (
-    req: express.Request<{}, {}, {}, { email?: string }>,
-    res: express.Response
-  ) => {
-    try {
-      const email = req.query.email?.trim();
-      if (!email) {
-        return res.status(400).json({ error: "email is required" });
-      }
-      const user = await globalController.findUserByEmail(email);
-      if (!user) {
-        return res.status(404).send();
-      }
-      return res.status(200).json(user);
-    } catch (e) {
-      console.error("GET /users/lookup error:", e);
-      return res.status(500).json({ error: "Internal error" });
-    }
-  }
-);
 
 app.get(
   "/scores/top",
