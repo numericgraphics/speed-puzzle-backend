@@ -138,9 +138,9 @@ export default class Global {
       return { message: EVENTS.SCORE_REJECTED };
     }
 
-    // optional: enforce same acceptance rule as checkScore
-    const acceptable = await this.scores.checkScores(value);
-    if (!acceptable) {
+    // must rank in the top 10 across all users' scores to be recorded
+    const { isTop10 } = await this.compareScoreToTop10(value);
+    if (!isTop10) {
       return {
         userId: user._id,
         created: false,
